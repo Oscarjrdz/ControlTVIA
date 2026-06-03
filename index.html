@@ -53,21 +53,47 @@
     </div>
   </header>
 
-  <!-- ─── Banner HTTPS ──────────────────────────────────────── -->
+  <!-- ─── Banner HTTPS (wizard) ──────────────────────────────── -->
   <div class="https-banner hidden" id="httpsBanner">
-    <div class="banner-content">
-      <span class="banner-icon">⚠️</span>
-      <div class="banner-text">
-        <strong>Paso requerido — un solo vez</strong><br>
-        La app usa HTTPS pero la TV solo acepta conexiones locales.<br>
-        Toca el botón y acepta el certificado, luego vuelve aquí y conecta.
+
+    <div class="wizard-header">
+      <span class="wizard-icon">🔐</span>
+      <div>
+        <strong class="wizard-title">Paso único requerido</strong>
+        <p class="wizard-sub">La app está en HTTPS pero tu TV solo acepta conexiones locales. Sigue uno de estos métodos:</p>
       </div>
     </div>
-    <button class="banner-btn" id="certBtn">Aceptar certificado</button>
-    <details class="banner-details">
-      <summary>¿Por qué?</summary>
-      <p>Chrome bloquea <code>ws://</code> desde páginas HTTPS (mixed content). La TV también acepta <code>wss://</code> en el puerto 8002 con un certificado autofirmado. Debes aceptarlo una vez en tu navegador.</p>
+
+    <!-- Método A: Certificado (recomendado móvil) -->
+    <div class="wizard-method" id="methodA">
+      <div class="method-badge">Método A · Recomendado</div>
+      <ol class="wizard-steps">
+        <li>Toca el botón de abajo — abrirá la TV en una pestaña nueva</li>
+        <li>En la pestaña verás <em>"Tu conexión no es privada"</em> — toca <strong>Configuración avanzada</strong></li>
+        <li>Toca <strong>"Ir a 192.168.0.44 (no seguro)"</strong></li>
+        <li>Cierra esa pestaña y regresa aquí</li>
+        <li>Toca <strong>Conectar</strong> — listo ✓</li>
+      </ol>
+      <button class="banner-btn" id="certBtn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Abrir certificado de la TV
+      </button>
+    </div>
+
+    <!-- Método B: Chrome settings (alternativo) -->
+    <details class="wizard-method method-alt">
+      <summary>Método B · Configuración de Chrome (si el A no funciona)</summary>
+      <ol class="wizard-steps">
+        <li>Toca el candado 🔒 en la barra de dirección de Chrome</li>
+        <li>Selecciona <strong>Configuración del sitio</strong></li>
+        <li>Busca <strong>Contenido no seguro</strong> → cámbialo a <strong>Permitir</strong></li>
+        <li>Recarga la página y toca <strong>Conectar</strong></li>
+      </ol>
     </details>
+
+    <p class="wizard-note" id="certDone" style="display:none">
+      ✓ Certificado visitado — ahora toca <strong>Conectar</strong>
+    </p>
   </div>
 
   <main class="app-main">

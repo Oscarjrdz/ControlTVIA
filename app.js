@@ -161,8 +161,18 @@ class TVController {
     if (certBtn) {
       certBtn.addEventListener('click', () => {
         const ip = document.getElementById('tvIP').value.trim() || this.tvIP;
-        // Open the TV's self-signed cert page so the user can accept it
-        window.open(`https://${ip}:${WS_PORT_WSS}`, '_blank');
+        const certWin = window.open(`https://${ip}:${WS_PORT_WSS}`, '_blank');
+
+        // Cuando el usuario cierra la pestaña del cert → marcar como hecho
+        const check = setInterval(() => {
+          if (certWin && certWin.closed) {
+            clearInterval(check);
+            const doneEl = document.getElementById('certDone');
+            if (doneEl) doneEl.style.display = 'block';
+            certBtn.textContent = '✓ Certificado aceptado — ahora Conectar';
+            certBtn.style.background = 'var(--success)';
+          }
+        }, 500);
       });
     }
   }
@@ -217,10 +227,13 @@ class TVController {
       this.ws.onerror = () => {
         this._setState('error');
         if (IS_HTTPS) {
-          this._log('Error wss:// — primero toca "Aceptar certificado" arriba y luego vuelve a conectar', 'error');
-          this._toast('Toca "Aceptar certificado" en el banner de arriba');
+          this._log('Error wss:// (puerto 8002) — sigue el Método A del banner amarillo arriba', 'error');
+          this._log('→ Toca "Abrir certificado de la TV", acepta la advertencia, regresa y conecta', 'warning');
+          // Scroll al banner
+          const banner = document.getElementById('httpsBanner');
+          if (banner) banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } else {
-          this._log('Error al conectar — verifica que la IP sea correcta y la TV esté encendida', 'error');
+          this._log('Error ws:// — verifica: ① IP correcta ② TV encendida ③ misma red WiFi', 'error');
         }
       };
 
