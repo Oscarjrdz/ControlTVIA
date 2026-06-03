@@ -110,6 +110,10 @@ class TVController {
     const $ = id => document.getElementById(id);
     const $$ = sel => document.querySelectorAll(sel);
 
+    // Colapso de la tarjeta de conexión
+    this._connExpanded = true;
+    $('connToggle').addEventListener('click', () => this._toggleConnCard());
+
     // IP / connect
     $('tvIP').value = this.tvIP;
     $('connectBtn').addEventListener('click', () => this._toggleConnection());
@@ -330,20 +334,52 @@ class TVController {
     return true;
   }
 
+  // ────── Conexión card colapso ────────────────────────────
+
+  _toggleConnCard(forceExpand) {
+    this._connExpanded = forceExpand !== undefined ? forceExpand : !this._connExpanded;
+    const body    = document.getElementById('connBody');
+    const chevron = document.getElementById('connChevron');
+    const toggle  = document.getElementById('connToggle');
+    if (!body) return;
+    body.classList.toggle('collapsed', !this._connExpanded);
+    if (chevron) chevron.style.transform = this._connExpanded ? 'rotate(0deg)' : 'rotate(-90deg)';
+    if (toggle)  toggle.setAttribute('aria-expanded', String(this._connExpanded));
+  }
+
   // ────── Status ───────────────────────────────────────────
 
   _setState(state) {
     this.state = state;
-    const dot  = document.getElementById('statusDot');
-    const text = document.getElementById('statusText');
     const labels = {
       connecting:   'Conectando…',
       connected:    'Conectado',
       disconnected: 'Desconectado',
-      error:        'Error de conexión',
+      error:        'Error',
     };
+    const label = labels[state] || state;
+
+    // Header del app
+    const dot  = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
     if (dot)  dot.setAttribute('data-state', state);
-    if (text) text.textContent = labels[state] || state;
+    if (text) text.textContent = label;
+
+    // Pill dentro de la tarjeta de conexión
+    const pillDot  = document.getElementById('connPillDot');
+    const pillText = document.getElementById('connPillText');
+    if (pillDot)  pillDot.setAttribute('data-state', state);
+    if (pillText) pillText.textContent = label;
+
+    const card = document.getElementById('connectionCard');
+    if (card) card.setAttribute('data-conn-state', state);
+
+    // Auto-colapsar al conectar; auto-expandir al desconectar/error
+    if (state === 'connected') {
+      this._toggleConnCard(false);
+    } else if (state === 'disconnected' || state === 'error') {
+      this._toggleConnCard(true);
+    }
   }
 
   // ────── Speech Recognition ───────────────────────────────

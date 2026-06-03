@@ -225,8 +225,107 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────── */
-/* ── Connection Card ── */
+/* ── Connection Card — colapsable ── */
 /* ────────────────────────────────────────────────────────── */
+
+/* Quitar padding inferior de la card cuando está colapsada */
+.conn-card { padding-bottom: 0; }
+[data-conn-state="connected"].conn-card { padding-bottom: 0; }
+
+/* Cabecera: botón táctil de expand/collapse */
+.conn-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0 0 14px;
+  cursor: pointer;
+  color: inherit;
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+  gap: 8px;
+}
+.conn-header:active { opacity: .7; }
+
+.conn-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conn-header-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-secondary);
+}
+
+/* Pill de estado */
+.conn-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 5px;
+  border-radius: var(--radius-full);
+  background: var(--bg-btn);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+[data-conn-state="connected"] .conn-pill {
+  background: rgba(34,197,94,.12);
+  border-color: rgba(34,197,94,.35);
+  color: var(--success);
+}
+[data-conn-state="connecting"] .conn-pill {
+  background: rgba(245,158,11,.12);
+  border-color: rgba(245,158,11,.35);
+  color: var(--warning);
+}
+[data-conn-state="error"] .conn-pill {
+  background: rgba(239,68,68,.12);
+  border-color: rgba(239,68,68,.35);
+  color: var(--error);
+}
+
+.conn-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+[data-conn-state="connected"] .conn-pill-dot  { background: var(--success); }
+[data-conn-state="connecting"] .conn-pill-dot { background: var(--warning); animation: pulse-dot 1.2s infinite; }
+[data-conn-state="error"] .conn-pill-dot      { background: var(--error); }
+
+/* Chevron */
+.conn-chevron { color: var(--text-muted); flex-shrink: 0; transition: transform var(--transition-slow); }
+
+/* Cuerpo colapsable */
+.conn-body {
+  overflow: hidden;
+  max-height: 600px;
+  opacity: 1;
+  transition: max-height .3s cubic-bezier(.4,0,.2,1), opacity .2s, padding .3s;
+  padding-bottom: 16px;
+}
+.conn-body.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+/* Cuando está colapsado: quitar padding del header inferior */
+.conn-card:has(.conn-body.collapsed) .conn-header { padding-bottom: 0; }
+
 .input-row {
   display: flex;
   gap: 8px;
