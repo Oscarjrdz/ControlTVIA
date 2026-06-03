@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "TV IA Control",
+    "slug": "tv-ia-control",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "tviacontrol",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f0f1a"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.oscarjrdz.tviacontrol",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Control necesita el micrófono para escuchar tus comandos de voz y controlar la TV.",
+        "NSSpeechRecognitionUsageDescription": "Control usa reconocimiento de voz para entender tus comandos."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f0f1a"
+      },
+      "package": "com.oscarjrdz.tviacontrol",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Control necesita el micrófono para escuchar tus comandos de voz."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
