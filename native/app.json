@@ -7,9 +7,8 @@
     "icon": "./assets/icon.png",
     "scheme": "tviacontrol",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#0f0f1a"
     },
@@ -17,13 +16,13 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.oscarjrdz.tviacontrol",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Control necesita el micrófono para escuchar tus comandos de voz y controlar la TV.",
+        "NSMicrophoneUsageDescription": "Control necesita el micrófono para escuchar tus comandos de voz.",
         "NSSpeechRecognitionUsageDescription": "Control usa reconocimiento de voz para entender tus comandos."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0f0f1a"
       },
       "package": "com.oscarjrdz.tviacontrol",
