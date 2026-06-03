@@ -353,13 +353,32 @@
       </button>
     </div>
 
+    <!-- Nombre del usuario -->
+    <div class="settings-section">
+      <div class="settings-section-header">
+        <span class="settings-section-icon">👤</span>
+        <div>
+          <strong class="settings-section-title">Tu nombre</strong>
+          <p class="settings-section-desc">Control te llamará por tu nombre en cada respuesta</p>
+        </div>
+      </div>
+      <input
+        type="text"
+        id="userNameInput"
+        class="settings-input"
+        placeholder="Oscar"
+        maxlength="20"
+        autocomplete="given-name"
+      >
+    </div>
+
     <!-- Gemini API -->
     <div class="settings-section">
       <div class="settings-section-header">
         <span class="settings-section-icon">✨</span>
         <div>
           <strong class="settings-section-title">Gemini AI</strong>
-          <p class="settings-section-desc">Activa conversación natural en lugar de comandos fijos</p>
+          <p class="settings-section-desc">Conversación natural en lugar de comandos fijos</p>
         </div>
       </div>
       <label class="settings-label" for="geminiKeyInput">API Key de Google AI Studio</label>
@@ -378,7 +397,10 @@
           </svg>
         </button>
       </div>
-      <p class="settings-hint">La key se guarda solo en este dispositivo (localStorage). Obtenla gratis en <em>aistudio.google.com</em></p>
+      <button class="btn-test-voice" id="testVoiceBtn" type="button">
+        🔊 Probar voz
+      </button>
+      <p class="settings-hint">La key se guarda solo en este dispositivo. Obtenla gratis en <em>aistudio.google.com</em></p>
     </div>
 
     <!-- Conversación -->

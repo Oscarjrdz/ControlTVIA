@@ -17,41 +17,45 @@ const GEMINI_MODEL    = 'gemini-2.0-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const GEMINI_HISTORY_MAX = 10; // turnos en memoria (5 intercambios)
 
-const SYSTEM_PROMPT = `Eres "Control", asistente de voz integrado en una app para Samsung Smart TV.
-Personalidad: amigable, casual, español México. Respuestas cortas y naturales.
+// El system prompt se genera dinámicamente para incluir el nombre del usuario
+function buildSystemPrompt(userName) {
+  const name = userName || 'jefe';
+  return `Eres "Control", asistente de voz para Samsung Smart TV de ${name}.
+Personalidad: amigable, casual, español México. Usas el nombre "${name}" naturalmente en tus respuestas.
 
-REGLA CRÍTICA: responde SOLO con JSON puro sin comillas de código ni explicaciones.
+REGLA CRÍTICA: responde SIEMPRE con JSON puro, sin markdown, sin explicaciones extra.
 Formato exacto: {"action":"...","value":"...","speak":"...","repeat":1}
 
 Campos:
-- action: "key" | "app" | "chat"
-- value: nombre de tecla, appId, o null si es chat
-- speak: lo que dices en voz al usuario (máximo 12 palabras, casual MX)
-- repeat: cuántas veces repetir la acción (default 1, máximo 20)
+- action: "key" | "app" | "chat" | "unknown"
+- value: nombre de tecla, appId, o null
+- speak: lo que dices EN VOZ (máximo 12 palabras, casual MX, usa el nombre "${name}" seguido)
+- repeat: veces a repetir la acción (default 1, máximo 20)
 
-TECLAS DISPONIBLES (action "key"):
-KEY_VOLUP / KEY_VOLDOWN = volumen, KEY_MUTE = silencio/quitar mute
-KEY_CHUP / KEY_CHDOWN = canales, KEY_POWER = encender/apagar
-KEY_HOME = inicio, KEY_RETURN = atrás, KEY_ENTER = ok/seleccionar
-KEY_UP / KEY_DOWN / KEY_LEFT / KEY_RIGHT = navegar
-KEY_PLAY / KEY_PAUSE / KEY_REWIND / KEY_FF = reproducción
-KEY_1 KEY_2 KEY_3 KEY_4 KEY_5 KEY_6 KEY_7 KEY_8 KEY_9 KEY_0 = números
+USA action "unknown" cuando no entiendes o el pedido es imposible.
+En "unknown" el speak debe ser una disculpa clara y pedir que repitan.
+NUNCA dejes speak vacío.
 
-APPS DISPONIBLES (action "app"):
-"netflix" = Netflix
-"111299001912" = YouTube
-"3201512006785" = Amazon Prime Video
-"3201601007250" = Disney+
-"3202012024782" = Spotify
-"3201907018807" = Pluto TV
+TECLAS (action "key"):
+KEY_VOLUP/KEY_VOLDOWN=volumen, KEY_MUTE=silencio, KEY_CHUP/KEY_CHDOWN=canales,
+KEY_POWER=encender/apagar, KEY_HOME=inicio, KEY_RETURN=atrás, KEY_ENTER=ok,
+KEY_UP/KEY_DOWN/KEY_LEFT/KEY_RIGHT=navegar, KEY_PLAY/KEY_PAUSE=reproducción,
+KEY_REWIND/KEY_FF=retroceder/adelantar, KEY_1..KEY_0=números
 
-EJEMPLOS:
-Usuario: "bájale" → {"action":"key","value":"KEY_VOLDOWN","speak":"Le bajo","repeat":1}
-Usuario: "más" (después de subir) → {"action":"key","value":"KEY_VOLUP","speak":"Más","repeat":2}
-Usuario: "ponme netflix" → {"action":"app","value":"netflix","speak":"Va, Netflix","repeat":1}
-Usuario: "sube 5 veces" → {"action":"key","value":"KEY_VOLUP","speak":"Subiendo 5","repeat":5}
-Usuario: "qué onda" → {"action":"chat","value":null,"speak":"Aquí ando, ¿qué quieres ver?","repeat":1}
-Usuario: "apágala ya" → {"action":"key","value":"KEY_POWER","speak":"Apagando, buenas noches","repeat":1}`;
+APPS (action "app"):
+netflix=Netflix, 111299001912=YouTube, 3201512006785=Amazon Prime,
+3201601007250=Disney+, 3202012024782=Spotify, 3201907018807=Pluto TV
+
+EJEMPLOS con nombre "${name}":
+"bájale" → {"action":"key","value":"KEY_VOLDOWN","speak":"Listo ${name}, le bajo","repeat":1}
+"ponme netflix" → {"action":"app","value":"netflix","speak":"Va ${name}, abriendo Netflix","repeat":1}
+"sube 5 veces" → {"action":"key","value":"KEY_VOLUP","speak":"Subiendo 5 ${name}","repeat":5}
+"apágala" → {"action":"key","value":"KEY_POWER","speak":"Buenas noches ${name}","repeat":1}
+"qué onda" → {"action":"chat","value":null,"speak":"Aquí ando ${name}, ¿qué necesitas?","repeat":1}
+"asdfgh" → {"action":"unknown","value":null,"speak":"No te entendí ${name}, ¿me repites?","repeat":1}
+"pon la luz" → {"action":"unknown","value":null,"speak":"Eso no puedo ${name}, solo controlo la tele","repeat":1}
+"como que no te escucho" → {"action":"unknown","value":null,"speak":"Dime de nuevo ${name}, no te escuché bien","repeat":1}`;
+}
 
 // Wake word phrases (todas las variaciones que puede reconocer el speech API)
 const WAKE_WORDS = [
@@ -145,6 +149,7 @@ class TVController {
 
     // Gemini / AI state
     this.geminiKey     = localStorage.getItem('geminiKey') || '';
+    this.userName      = localStorage.getItem('userName') || 'Oscar';
     this._conversation = [];   // historial [{role,parts}]
     this._ttsVoice     = null; // voz TTS preferida
 
@@ -211,6 +216,10 @@ class TVController {
     $('keyShowBtn').addEventListener('click', () => {
       const inp = $('geminiKeyInput');
       if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+    $('testVoiceBtn').addEventListener('click', () => {
+      const nameNow = ($('userNameInput')?.value.trim()) || this.userName || 'Oscar';
+      this._speak(`Hola ${nameNow}, soy Control, tu asistente de televisión`);
     });
 
     // Theme toggle
@@ -568,7 +577,7 @@ class TVController {
     }
 
     const body = {
-      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      system_instruction: { parts: [{ text: buildSystemPrompt(this.userName) }] },
       contents: this._conversation,
       generationConfig: {
         temperature: 0.8,
@@ -613,32 +622,59 @@ class TVController {
 
   _executeAIAction(result, originalTranscript) {
     const { action, value, speak, repeat = 1 } = result;
-    const statusEl = document.getElementById('voiceStatus');
+    const statusEl     = document.getElementById('voiceStatus');
     const transcriptEl = document.getElementById('voiceTranscript');
 
-    // Mostrar lo que respondió la IA
-    if (speak) {
-      if (transcriptEl) transcriptEl.textContent = '✨ ' + speak;
-      setTimeout(() => { if (transcriptEl) transcriptEl.textContent = ''; }, 4000);
+    // Siempre hablar — es la respuesta principal del asistente
+    const textToSpeak = speak || this._fallbackSpeak(action);
+    this._speak(textToSpeak);
+
+    // Mostrar burbuja de respuesta
+    if (transcriptEl) {
+      transcriptEl.textContent = '✨ ' + textToSpeak;
+      setTimeout(() => { if (transcriptEl) transcriptEl.textContent = ''; }, 5000);
     }
-    if (statusEl) statusEl.textContent = action === 'chat' ? '💬 ' + (speak || '') : '✓ Ejecutado';
 
-    // Hablar en voz
-    if (speak) this._speak(speak);
+    // Estado visual
+    if (statusEl) {
+      if (action === 'unknown') {
+        statusEl.textContent = '🤔 No entendí';
+      } else if (action === 'chat') {
+        statusEl.textContent = '💬 Respondido';
+      } else {
+        statusEl.textContent = '✓ Ejecutado';
+      }
+      setTimeout(() => {
+        if (statusEl.textContent !== 'Manos libres activo') {
+          statusEl.textContent = this.wakeMode ? 'Manos libres activo' : 'Toca para hablar';
+        }
+      }, 4000);
+    }
 
-    // Ejecutar acción en la TV
+    if (action === 'unknown') {
+      this._log(`🤔 No entendí: "${originalTranscript}"`, 'warning');
+      return;
+    }
+
     const times = Math.min(Math.max(parseInt(repeat) || 1, 1), 20);
+
     if (action === 'key' && value) {
-      this._log(`✨ AI → ${value} × ${times}`, 'command');
+      this._log(`✨ ${value}${times > 1 ? ' ×' + times : ''}`, 'command');
       for (let i = 0; i < times; i++) {
         setTimeout(() => this.sendKey(value), i * 280);
       }
     } else if (action === 'app' && value) {
-      this._log(`✨ AI → app: ${APP_LABELS[value] || value}`, 'command');
+      this._log(`✨ ${APP_LABELS[value] || value}`, 'command');
       this.openApp(value);
     } else if (action === 'chat') {
-      this._log(`✨ AI → "${speak}"`, 'voice');
+      this._log(`✨ "${textToSpeak}"`, 'voice');
     }
+  }
+
+  _fallbackSpeak(action) {
+    const name = this.userName || 'jefe';
+    if (action === 'unknown') return `No te entendí ${name}, ¿me repites?`;
+    return 'Listo';
   }
 
   // ────── Text-to-Speech ───────────────────────────────────
@@ -675,34 +711,49 @@ class TVController {
   // ────── Settings modal ───────────────────────────────────
 
   _openSettings() {
-    const modal = document.getElementById('settingsModal');
-    const input = document.getElementById('geminiKeyInput');
-    if (input) input.value = this.geminiKey;
+    const modal     = document.getElementById('settingsModal');
+    const keyInput  = document.getElementById('geminiKeyInput');
+    const nameInput = document.getElementById('userNameInput');
+    if (keyInput)  keyInput.value  = this.geminiKey;
+    if (nameInput) nameInput.value = this.userName;
     if (modal) {
       modal.classList.remove('hidden');
-      modal.classList.add('open');
+      requestAnimationFrame(() => modal.classList.add('open'));
     }
+    const overlay = document.getElementById('settingsOverlay');
+    if (overlay) overlay.classList.remove('hidden');
   }
 
   _closeSettings() {
-    const modal = document.getElementById('settingsModal');
+    const modal   = document.getElementById('settingsModal');
+    const overlay = document.getElementById('settingsOverlay');
     if (modal) {
       modal.classList.remove('open');
-      setTimeout(() => modal.classList.add('hidden'), 280);
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        if (overlay) overlay.classList.add('hidden');
+      }, 290);
     }
   }
 
   _saveSettings() {
-    const input = document.getElementById('geminiKeyInput');
-    const key = input ? input.value.trim() : '';
+    const keyInput  = document.getElementById('geminiKeyInput');
+    const nameInput = document.getElementById('userNameInput');
+    const key  = keyInput  ? keyInput.value.trim()  : '';
+    const name = nameInput ? nameInput.value.trim() : 'Oscar';
+
     this.geminiKey = key;
+    this.userName  = name || 'Oscar';
     localStorage.setItem('geminiKey', key);
-    this._conversation = []; // limpiar historial al cambiar key
+    localStorage.setItem('userName', this.userName);
+    this._conversation = [];
     this._syncAIBadge();
     this._closeSettings();
+
     if (key) {
-      this._log('✨ Gemini activado — modo conversación', 'success');
-      this._toast('¡Gemini listo! Habla con normalidad');
+      this._log(`✨ Gemini activo — hola ${this.userName}`, 'success');
+      this._speak(`Listo ${this.userName}, ya estoy activo`);
+      this._toast(`¡Listo ${this.userName}! Habla con normalidad`);
     } else {
       this._log('Gemini desactivado — modo comandos clásicos', 'info');
     }
