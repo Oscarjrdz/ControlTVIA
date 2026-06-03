@@ -398,6 +398,139 @@ body {
 /* ────────────────────────────────────────────────────────── */
 /* ── Voice Card ── */
 /* ────────────────────────────────────────────────────────── */
+
+/* Header de la voice card con toggle */
+.voice-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+/* Toggle manos libres */
+.wake-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font);
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition);
+}
+.wake-toggle:hover { color: var(--text); }
+
+.wake-toggle-track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--bg-btn);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-full);
+  transition: background var(--transition), border-color var(--transition);
+  flex-shrink: 0;
+}
+.wake-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  background: var(--text-muted);
+  transition: transform var(--transition), background var(--transition);
+}
+[aria-pressed="true"].wake-toggle .wake-toggle-track {
+  background: var(--mic-color);
+  border-color: var(--mic-color);
+}
+[aria-pressed="true"].wake-toggle .wake-toggle-thumb {
+  transform: translateX(16px);
+  background: #fff;
+}
+[aria-pressed="true"].wake-toggle { color: var(--mic-color); }
+
+/* Barra de estado wake word */
+.wake-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 10px 0 2px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: background var(--transition), border-color var(--transition);
+}
+.wake-bar:not(.hidden) { display: flex; }
+
+/* Orb (círculo animado) */
+.wake-bar-orb {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--bg-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: background var(--transition), color var(--transition);
+}
+.wake-orb-ring {
+  position: absolute;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--mic-color);
+  opacity: 0;
+}
+.wake-orb-ring.r1 { width: 42px; height: 42px; }
+.wake-orb-ring.r2 { width: 54px; height: 54px; }
+
+/* Estado: escuchando wake word */
+[data-state="listening"].wake-bar-orb {
+  background: rgba(236,72,153,.1);
+  color: var(--mic-color);
+  animation: orb-breathe 2.5s ease-in-out infinite;
+}
+@keyframes orb-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236,72,153,.3); }
+  50% { box-shadow: 0 0 0 6px rgba(236,72,153,.0); }
+}
+
+/* Estado: armado (wake word detectado, esperando comando) */
+[data-state="armed"].wake-bar-orb {
+  background: var(--mic-color);
+  color: #fff;
+}
+[data-state="armed"].wake-bar-orb .wake-orb-ring {
+  animation: wake-ring 1.2s ease-out infinite;
+}
+[data-state="armed"].wake-bar-orb .r2 { animation-delay: .4s; }
+@keyframes wake-ring {
+  0% { opacity: .5; transform: scale(.9); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+.wake-bar-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  flex: 1;
+}
+.wake-bar-text strong { color: var(--text); }
+
+/* Cuando está armado, la barra cambia */
+.wake-bar:has([data-state="armed"]) {
+  background: rgba(236,72,153,.08);
+  border-color: rgba(236,72,153,.3);
+}
+
 .voice-card .section-title { margin-bottom: 0; }
 
 .mic-area {

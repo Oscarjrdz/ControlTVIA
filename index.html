@@ -115,10 +115,33 @@
 
     <!-- ─── Control por Voz ──────────────────────────────────── -->
     <section class="card voice-card">
-      <h2 class="section-title">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-        Control por Voz
-      </h2>
+      <div class="voice-card-header">
+        <h2 class="section-title" style="margin-bottom:0">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          Control por Voz
+        </h2>
+        <!-- Toggle manos libres -->
+        <button class="wake-toggle" id="wakeToggle" aria-pressed="false" title="Activar modo manos libres">
+          <span class="wake-toggle-track">
+            <span class="wake-toggle-thumb"></span>
+          </span>
+          <span class="wake-toggle-label">Manos libres</span>
+        </button>
+      </div>
+
+      <!-- Indicador de wake word mode -->
+      <div class="wake-bar hidden" id="wakeBar">
+        <div class="wake-bar-orb" id="wakeOrb">
+          <div class="wake-orb-ring r1"></div>
+          <div class="wake-orb-ring r2"></div>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          </svg>
+        </div>
+        <span class="wake-bar-text" id="wakeBarText">Di <strong>"Oye Control"</strong> seguido del comando</span>
+      </div>
+
       <div class="mic-area">
         <button class="mic-btn" id="micBtn" aria-label="Activar reconocimiento de voz" aria-pressed="false">
           <div class="mic-pulse pulse-1"></div>

@@ -12,6 +12,12 @@ const WS_PORT_WSS  = 8002;   // wss:// — funciona desde HTTPS (cert autofirmad
 const WS_PATH      = '/api/v2/channels/samsung.remote.control';
 const IS_HTTPS     = location.protocol === 'https:';
 
+// Wake word phrases (todas las variaciones que puede reconocer el speech API)
+const WAKE_WORDS = [
+  'oye control', 'hey control', 'ey control', 'oye controla',
+  'oye, control', 'hey, control', 'oi control', 'oye contról',
+];
+
 // App IDs for Samsung Tizen TVs
 const APPS = {
   netflix:  'netflix',
@@ -90,6 +96,12 @@ class TVController {
     this.reconnectTimer = null;
     this.scanActive    = false;
 
+    // Wake word state
+    this.wakeMode      = false;   // manos libres activado
+    this.wakeArmed     = false;   // wake word oído, esperando comando
+    this._wakeRec      = null;    // instancia SR para wake word
+    this._wakeRestart  = null;    // timer de reinicio
+
     this._init();
   }
 
@@ -121,6 +133,9 @@ class TVController {
 
     // HTTPS banner / cert button
     this._setupHTTPSBanner();
+
+    // Manos libres toggle
+    $('wakeToggle').addEventListener('click', () => this._toggleWakeMode());
 
     // Scan
     $('scanBtn').addEventListener('click', () => this._scanNetwork());
@@ -469,6 +484,163 @@ class TVController {
     this._log('No reconocí: "' + transcript + '"', 'warning');
     document.getElementById('voiceStatus').textContent = '¿No entendí? Intenta de nuevo';
     this._toast('No entendí el comando');
+  }
+
+  // ────── Wake word mode ───────────────────────────────────
+
+  _toggleWakeMode() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { this._toast('Web Speech API no disponible en este navegador'); return; }
+
+    this.wakeMode = !this.wakeMode;
+    const btn = document.getElementById('wakeToggle');
+    if (btn) btn.setAttribute('aria-pressed', String(this.wakeMode));
+
+    if (this.wakeMode) {
+      this._buildWakeRecognition();
+      this._startWakeRec();
+      this._setWakeUI('listening');
+      this._log('🎙 Manos libres activo — di "Oye Control…"', 'voice');
+    } else {
+      this._stopWakeRec();
+      this._setWakeUI('off');
+      this._log('Manos libres desactivado', 'info');
+    }
+  }
+
+  _buildWakeRecognition() {
+    if (this._wakeRec) return; // ya construida
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SR();
+    rec.lang            = 'es-MX';
+    rec.continuous      = true;
+    rec.interimResults  = true;
+    rec.maxAlternatives = 2;
+
+    rec.onresult = ev => {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const result     = ev.results[i];
+        const transcript = result[0].transcript.toLowerCase().trim();
+
+        // Mostrar lo que se oye en tiempo real
+        const transcriptEl = document.getElementById('voiceTranscript');
+        if (transcriptEl && this.wakeArmed) transcriptEl.textContent = '"' + transcript + '"';
+
+        const foundWake = WAKE_WORDS.some(w => transcript.includes(w));
+
+        if (!this.wakeArmed) {
+          if (foundWake) {
+            this.wakeArmed = true;
+            this._onWakeDetected(transcript);
+          }
+        } else if (result.isFinal) {
+          // Estamos armados: este resultado final es el comando
+          let cmd = transcript;
+          WAKE_WORDS.forEach(w => { cmd = cmd.replace(w, '').trim(); });
+
+          if (cmd.length > 1) {
+            this._processVoice(cmd);
+            this.wakeArmed = false;
+            setTimeout(() => {
+              if (this.wakeMode) this._setWakeUI('listening');
+            }, 1500);
+          }
+          // Si cmd vacío (solo dijo el wake word), seguir armado esperando el comando
+        }
+      }
+    };
+
+    rec.onend = () => {
+      if (!this.wakeMode) return;
+      // Auto-reinicio para mantener el micrófono siempre activo
+      clearTimeout(this._wakeRestart);
+      this._wakeRestart = setTimeout(() => this._startWakeRec(), 200);
+    };
+
+    rec.onerror = ev => {
+      if (ev.error === 'not-allowed') {
+        this.wakeMode = false;
+        const btn = document.getElementById('wakeToggle');
+        if (btn) btn.setAttribute('aria-pressed', 'false');
+        this._setWakeUI('off');
+        this._toast('Permite el micrófono en Chrome para usar manos libres');
+        return;
+      }
+      if (ev.error === 'aborted') return;
+      // Reintentar en otros errores
+      if (this.wakeMode) {
+        clearTimeout(this._wakeRestart);
+        this._wakeRestart = setTimeout(() => this._startWakeRec(), 400);
+      }
+    };
+
+    this._wakeRec = rec;
+  }
+
+  _startWakeRec() {
+    if (!this._wakeRec || !this.wakeMode) return;
+    try { this._wakeRec.start(); } catch (_) {}
+  }
+
+  _stopWakeRec() {
+    clearTimeout(this._wakeRestart);
+    this.wakeArmed = false;
+    if (!this._wakeRec) return;
+    try { this._wakeRec.stop(); } catch (_) {}
+  }
+
+  _onWakeDetected(fullTranscript) {
+    // Vibración corta de confirmación
+    if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+
+    this._setWakeUI('armed');
+    this._log('🎙 "Oye Control" — esperando comando…', 'voice');
+
+    // Si el comando vino en la misma frase: "oye control sube el volumen"
+    let inline = fullTranscript;
+    WAKE_WORDS.forEach(w => { inline = inline.replace(w, '').trim(); });
+    if (inline.length > 2) {
+      setTimeout(() => {
+        this._processVoice(inline);
+        this.wakeArmed = false;
+        if (this.wakeMode) this._setWakeUI('listening');
+      }, 300);
+    }
+  }
+
+  _setWakeUI(state) {
+    // state: 'off' | 'listening' | 'armed'
+    const bar       = document.getElementById('wakeBar');
+    const orb       = document.getElementById('wakeOrb');
+    const barText   = document.getElementById('wakeBarText');
+    const micBtn    = document.getElementById('micBtn');
+    const voiceStat = document.getElementById('voiceStatus');
+    const transcript = document.getElementById('voiceTranscript');
+
+    if (!bar) return;
+
+    if (state === 'off') {
+      bar.classList.add('hidden');
+      if (orb) orb.setAttribute('data-state', 'off');
+      if (transcript) transcript.textContent = '';
+
+    } else if (state === 'listening') {
+      bar.classList.remove('hidden');
+      if (orb) orb.setAttribute('data-state', 'listening');
+      if (barText) barText.innerHTML = 'Di <strong>"Oye Control"</strong> seguido del comando';
+      if (voiceStat) voiceStat.textContent = 'Manos libres activo';
+      if (transcript) transcript.textContent = '';
+      // Micrófono en modo espera (no pulsing)
+      if (micBtn) micBtn.classList.remove('listening');
+
+    } else if (state === 'armed') {
+      bar.classList.remove('hidden');
+      if (orb) orb.setAttribute('data-state', 'armed');
+      if (barText) barText.innerHTML = '🎤 <strong>Di tu comando…</strong>';
+      if (voiceStat) voiceStat.textContent = 'Escuchando comando…';
+      // Activar animación del mic grande
+      if (micBtn) micBtn.classList.add('listening');
+    }
   }
 
   // ────── Network scanner ──────────────────────────────────
