@@ -36,7 +36,7 @@
     "plugins": [
       "expo-router",
       [
-        "expo-av",
+        "expo-audio",
         {
           "microphonePermission": "Control necesita el micrófono para escuchar tus comandos de voz."
         }

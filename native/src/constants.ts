@@ -2,7 +2,7 @@
 export const WS_PORT = 8001;
 export const WS_PATH = '/api/v2/channels/samsung.remote.control';
 export const APP_NAME = 'TV IA Control';
-export const APP_NAME_B64 = btoa(APP_NAME);
+export const APP_NAME_B64 = 'VFYgSUEgQ29udHJvbA=='; // base64('TV IA Control')
 
 // ── Apps ────────────────────────────────────────────────────
 export const APPS: Record<string, string> = {
