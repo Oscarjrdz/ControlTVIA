@@ -154,23 +154,33 @@ class TVController {
 
   _setupHTTPSBanner() {
     if (!IS_HTTPS) return;
-    const banner = document.getElementById('httpsBanner');
-    if (banner) banner.classList.remove('hidden');
+
+    // Muestra el bloque de certificado dentro de la tarjeta de Conexión
+    const block = document.getElementById('certBlock');
+    if (block) block.classList.remove('hidden');
 
     const certBtn = document.getElementById('certBtn');
     if (certBtn) {
       certBtn.addEventListener('click', () => {
         const ip = document.getElementById('tvIP').value.trim() || this.tvIP;
+
+        // Actualiza el texto del paso con la IP real
+        const subSteps = document.querySelector('.cert-sub-steps');
+        if (subSteps) {
+          subSteps.innerHTML = `En la nueva pestaña: toca <strong>Configuración avanzada</strong> → <strong>"Ir a ${ip} (no seguro)"</strong> → cierra la pestaña → regresa aquí y toca Conectar.`;
+        }
+
         const certWin = window.open(`https://${ip}:${WS_PORT_WSS}`, '_blank');
 
-        // Cuando el usuario cierra la pestaña del cert → marcar como hecho
+        // Al cerrar la pestaña → marcar como completado
         const check = setInterval(() => {
           if (certWin && certWin.closed) {
             clearInterval(check);
-            const doneEl = document.getElementById('certDone');
-            if (doneEl) doneEl.style.display = 'block';
-            certBtn.textContent = '✓ Certificado aceptado — ahora Conectar';
+            certBtn.innerHTML = '✓ Certificado aceptado';
             certBtn.style.background = 'var(--success)';
+            certBtn.style.cursor = 'default';
+            const done = document.getElementById('certDone');
+            if (done) done.classList.remove('hidden');
           }
         }, 500);
       });
