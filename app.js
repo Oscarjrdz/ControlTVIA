@@ -5,10 +5,12 @@
 // Samsung Smart TV WebSocket Remote Control + Web Speech API
 // ──────────────────────────────────────────────────────────
 
-const APP_NAME    = 'TV IA Control';
+const APP_NAME     = 'TV IA Control';
 const APP_NAME_B64 = btoa(APP_NAME);
-const WS_PORT     = 8001;
-const WS_PATH     = '/api/v2/channels/samsung.remote.control';
+const WS_PORT_WS   = 8001;   // ws://  — solo funciona desde HTTP
+const WS_PORT_WSS  = 8002;   // wss:// — funciona desde HTTPS (cert autofirmado)
+const WS_PATH      = '/api/v2/channels/samsung.remote.control';
+const IS_HTTPS     = location.protocol === 'https:';
 
 // App IDs for Samsung Tizen TVs
 const APPS = {
@@ -113,6 +115,9 @@ class TVController {
     $('connectBtn').addEventListener('click', () => this._toggleConnection());
     $('tvIP').addEventListener('keydown', e => { if (e.key === 'Enter') this._toggleConnection(); });
 
+    // HTTPS banner / cert button
+    this._setupHTTPSBanner();
+
     // Scan
     $('scanBtn').addEventListener('click', () => this._scanNetwork());
 
@@ -145,6 +150,31 @@ class TVController {
     if (meta) meta.content = theme === 'dark' ? '#0f0f1a' : '#f4f4f8';
   }
 
+  // ────── HTTPS mixed-content banner ──────────────────────
+
+  _setupHTTPSBanner() {
+    if (!IS_HTTPS) return;
+    const banner = document.getElementById('httpsBanner');
+    if (banner) banner.classList.remove('hidden');
+
+    const certBtn = document.getElementById('certBtn');
+    if (certBtn) {
+      certBtn.addEventListener('click', () => {
+        const ip = document.getElementById('tvIP').value.trim() || this.tvIP;
+        // Open the TV's self-signed cert page so the user can accept it
+        window.open(`https://${ip}:${WS_PORT_WSS}`, '_blank');
+      });
+    }
+  }
+
+  _buildWsUrl(ip) {
+    if (IS_HTTPS) {
+      // HTTPS page → must use wss:// (port 8002, Samsung SSL WebSocket)
+      return `wss://${ip}:${WS_PORT_WSS}${WS_PATH}?name=${APP_NAME_B64}`;
+    }
+    return `ws://${ip}:${WS_PORT_WS}${WS_PATH}?name=${APP_NAME_B64}`;
+  }
+
   // ────── WebSocket connection ────────────────────────────
 
   _toggleConnection() {
@@ -166,9 +196,9 @@ class TVController {
     clearTimeout(this.reconnectTimer);
 
     this._setState('connecting');
-    this._log('Conectando a ' + ip + '…', 'info');
-
-    const url = `ws://${ip}:${WS_PORT}${WS_PATH}?name=${APP_NAME_B64}`;
+    const url = this._buildWsUrl(ip);
+    const proto = IS_HTTPS ? 'wss (puerto 8002)' : 'ws (puerto 8001)';
+    this._log('Conectando a ' + ip + ' vía ' + proto + '…', 'info');
 
     try {
       this.ws = new WebSocket(url);
@@ -186,7 +216,12 @@ class TVController {
 
       this.ws.onerror = () => {
         this._setState('error');
-        this._log('Error al conectar — verifica la IP y que la TV esté encendida', 'error');
+        if (IS_HTTPS) {
+          this._log('Error wss:// — primero toca "Aceptar certificado" arriba y luego vuelve a conectar', 'error');
+          this._toast('Toca "Aceptar certificado" en el banner de arriba');
+        } else {
+          this._log('Error al conectar — verifica que la IP sea correcta y la TV esté encendida', 'error');
+        }
       };
 
       this.ws.onclose = () => {
@@ -432,7 +467,7 @@ class TVController {
       }, timeout);
 
       try {
-        ws = new WebSocket(`ws://${ip}:${WS_PORT}${WS_PATH}?name=${APP_NAME_B64}`);
+        ws = new WebSocket(this._buildWsUrl(ip));
         ws.onopen  = () => { clearTimeout(timer); ws.close(); resolve(true); };
         ws.onerror = () => { clearTimeout(timer); resolve(false); };
       } catch (_) {

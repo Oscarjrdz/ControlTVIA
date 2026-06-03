@@ -53,6 +53,23 @@
     </div>
   </header>
 
+  <!-- ─── Banner HTTPS ──────────────────────────────────────── -->
+  <div class="https-banner hidden" id="httpsBanner">
+    <div class="banner-content">
+      <span class="banner-icon">⚠️</span>
+      <div class="banner-text">
+        <strong>Paso requerido — un solo vez</strong><br>
+        La app usa HTTPS pero la TV solo acepta conexiones locales.<br>
+        Toca el botón y acepta el certificado, luego vuelve aquí y conecta.
+      </div>
+    </div>
+    <button class="banner-btn" id="certBtn">Aceptar certificado</button>
+    <details class="banner-details">
+      <summary>¿Por qué?</summary>
+      <p>Chrome bloquea <code>ws://</code> desde páginas HTTPS (mixed content). La TV también acepta <code>wss://</code> en el puerto 8002 con un certificado autofirmado. Debes aceptarlo una vez en tu navegador.</p>
+    </details>
+  </div>
+
   <main class="app-main">
 
     <!-- ─── Conexión ────────────────────────────────────────── -->
