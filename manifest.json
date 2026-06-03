@@ -1,0 +1,50 @@
+{
+  "name": "TV IA Control",
+  "short_name": "TV Control",
+  "description": "Controla tu Samsung Smart TV por voz y botones táctiles",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f1a",
+  "theme_color": "#0f0f1a",
+  "lang": "es",
+  "scope": "/",
+  "categories": ["utilities", "entertainment"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Netflix",
+      "short_name": "Netflix",
+      "description": "Abrir Netflix en la TV",
+      "url": "/?launch=netflix",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "YouTube",
+      "short_name": "YouTube",
+      "description": "Abrir YouTube en la TV",
+      "url": "/?launch=youtube",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

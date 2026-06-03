@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f0f1a" id="themeColorMeta">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TV Control">
+  <meta name="description" content="Control tu Samsung Smart TV por voz y botones táctiles">
+  <title>TV IA Control</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ─── Header ─────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="app-logo" aria-hidden="true">📺</div>
+      <div class="header-info">
+        <h1 class="app-title">TV IA Control</h1>
+        <div class="status-bar" role="status" aria-live="polite">
+          <span class="status-dot" id="statusDot" data-state="disconnected"></span>
+          <span class="status-text" id="statusText">Desconectado</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="scanBtn" title="Buscar TVs en la red" aria-label="Buscar TVs">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- ─── Conexión ────────────────────────────────────────── -->
+    <section class="card" id="connectionCard">
+      <h2 class="section-title">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+        Conexión
+      </h2>
+      <div class="input-row">
+        <input
+          type="text"
+          id="tvIP"
+          class="ip-input"
+          placeholder="192.168.0.44"
+          inputmode="decimal"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Dirección IP de la TV"
+        >
+        <button class="btn-connect" id="connectBtn" aria-label="Conectar a la TV">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Conectar
+        </button>
+      </div>
+      <div id="scanResults" class="scan-results hidden"></div>
+    </section>
+
+    <!-- ─── Control por Voz ──────────────────────────────────── -->
+    <section class="card voice-card">
+      <h2 class="section-title">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        Control por Voz
+      </h2>
+      <div class="mic-area">
+        <button class="mic-btn" id="micBtn" aria-label="Activar reconocimiento de voz" aria-pressed="false">
+          <div class="mic-pulse pulse-1"></div>
+          <div class="mic-pulse pulse-2"></div>
+          <div class="mic-pulse pulse-3"></div>
+          <svg class="mic-icon" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+        <p class="voice-status" id="voiceStatus">Toca para hablar</p>
+        <div class="voice-transcript" id="voiceTranscript" aria-live="polite"></div>
+      </div>
+      <details class="hints-details">
+        <summary class="hints-summary">Ver comandos disponibles</summary>
+        <div class="hints-grid">
+          <span class="hint">"sube el volumen"</span>
+          <span class="hint">"baja el volumen"</span>
+          <span class="hint">"silencio"</span>
+          <span class="hint">"canal arriba"</span>
+          <span class="hint">"canal abajo"</span>
+          <span class="hint">"apaga" / "enciende"</span>
+          <span class="hint">"netflix"</span>
+          <span class="hint">"youtube"</span>
+          <span class="hint">"prime" / "amazon"</span>
+          <span class="hint">"disney"</span>
+          <span class="hint">"inicio" / "home"</span>
+          <span class="hint">"atrás" / "back"</span>
+        </div>
+      </details>
+    </section>
+
+    <!-- ─── Control Remoto ───────────────────────────────────── -->
+    <section class="card remote-card">
+      <h2 class="section-title">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+        Control Remoto
+      </h2>
+
+      <!-- Fila: Power / Home / Atrás -->
+      <div class="btn-row top-row">
+        <button class="remote-btn power-btn" data-key="KEY_POWER" title="Encender / Apagar">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+        </button>
+        <button class="remote-btn" data-key="KEY_HOME" title="Inicio">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </button>
+        <button class="remote-btn" data-key="KEY_RETURN" title="Atrás">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="remote-btn" data-key="KEY_MENU" title="Menú">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+
+      <!-- D-Pad -->
+      <div class="dpad-wrapper">
+        <div class="dpad">
+          <button class="dpad-btn dpad-up" data-key="KEY_UP" aria-label="Arriba">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
+          </button>
+          <div class="dpad-row">
+            <button class="dpad-btn dpad-left" data-key="KEY_LEFT" aria-label="Izquierda">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 12l8-8v16z"/></svg>
+            </button>
+            <button class="dpad-btn dpad-ok" data-key="KEY_ENTER" aria-label="OK / Seleccionar">OK</button>
+            <button class="dpad-btn dpad-right" data-key="KEY_RIGHT" aria-label="Derecha">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 12l-8-8v16z"/></svg>
+            </button>
+          </div>
+          <button class="dpad-btn dpad-down" data-key="KEY_DOWN" aria-label="Abajo">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 20l8-8H4z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Volumen & Canal -->
+      <div class="vol-ch-grid">
+        <div class="control-col">
+          <span class="col-label">VOL</span>
+          <button class="remote-btn round-btn" data-key="KEY_VOLUP" aria-label="Volumen más">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="remote-btn round-btn mute-btn" data-key="KEY_MUTE" aria-label="Silencio">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+          </button>
+          <button class="remote-btn round-btn" data-key="KEY_VOLDOWN" aria-label="Volumen menos">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <div class="control-col">
+          <span class="col-label">CH</span>
+          <button class="remote-btn round-btn" data-key="KEY_CHUP" aria-label="Canal arriba">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 4l8 10H4z"/></svg>
+          </button>
+          <button class="remote-btn round-btn" data-key="KEY_INFO" aria-label="Info">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          </button>
+          <button class="remote-btn round-btn" data-key="KEY_CHDOWN" aria-label="Canal abajo">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 20l8-10H4z"/></svg>
+          </button>
+        </div>
+        <div class="control-col">
+          <span class="col-label">MEDIA</span>
+          <button class="remote-btn round-btn" data-key="KEY_REWIND" aria-label="Retroceder">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
+          </button>
+          <button class="remote-btn round-btn" data-key="KEY_PLAY" aria-label="Reproducir / Pausa">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </button>
+          <button class="remote-btn round-btn" data-key="KEY_FF" aria-label="Avanzar">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Números rápidos -->
+      <div class="numpad">
+        <button class="num-btn" data-key="KEY_1">1</button>
+        <button class="num-btn" data-key="KEY_2">2</button>
+        <button class="num-btn" data-key="KEY_3">3</button>
+        <button class="num-btn" data-key="KEY_4">4</button>
+        <button class="num-btn" data-key="KEY_5">5</button>
+        <button class="num-btn" data-key="KEY_6">6</button>
+        <button class="num-btn" data-key="KEY_7">7</button>
+        <button class="num-btn" data-key="KEY_8">8</button>
+        <button class="num-btn" data-key="KEY_9">9</button>
+        <button class="num-btn wide-btn" data-key="KEY_PRECH">Prev</button>
+        <button class="num-btn" data-key="KEY_0">0</button>
+        <button class="num-btn wide-btn" data-key="KEY_TTX_MIX">Text</button>
+      </div>
+    </section>
+
+    <!-- ─── Aplicaciones ─────────────────────────────────────── -->
+    <section class="card apps-card">
+      <h2 class="section-title">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Aplicaciones
+      </h2>
+      <div class="apps-grid">
+        <button class="app-btn" data-app="netflix" style="--app-color:#e50914" aria-label="Abrir Netflix">
+          <span class="app-logo-text" style="font-style:italic;font-weight:900">N</span>
+          <span class="app-name">Netflix</span>
+        </button>
+        <button class="app-btn" data-app="111299001912" style="--app-color:#ff0000" aria-label="Abrir YouTube">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="var(--app-color)"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-1.96C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.4 19.54C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg>
+          <span class="app-name">YouTube</span>
+        </button>
+        <button class="app-btn" data-app="3201512006785" style="--app-color:#00a8e1" aria-label="Abrir Amazon Prime">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="var(--app-color)"><path d="M3.18 14.4C4.9 17.67 8.26 19.8 12 19.8c2.4 0 4.62-.87 6.32-2.32l.08-.07.6.6-.08.07A9.74 9.74 0 0 1 12 20.8c-4.18 0-7.84-2.4-9.68-5.93l.86-.47zM12 3.2a8.8 8.8 0 0 1 8.8 8.8c0 1.25-.26 2.44-.72 3.52l-.93-.4c.4-.96.65-2 .65-3.12A7.8 7.8 0 0 0 12 4.2a7.78 7.78 0 0 0-6.96 4.27l-.9-.44A8.78 8.78 0 0 1 12 3.2z"/><path d="M14.5 9.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/></svg>
+          <span class="app-name">Prime</span>
+        </button>
+        <button class="app-btn" data-app="3201601007250" style="--app-color:#113ccf" aria-label="Abrir Disney+">
+          <span class="app-logo-text" style="font-size:22px;font-weight:900;font-style:italic">D+</span>
+          <span class="app-name">Disney+</span>
+        </button>
+        <button class="app-btn" data-app="3202012024782" style="--app-color:#1db954" aria-label="Abrir Spotify">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="var(--app-color)"><circle cx="12" cy="12" r="10"/><path d="M8 13.5c2.33-.77 4.67-.77 7 0" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M7 11c2.67-1 5.33-1 8 0" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M6.5 8.5c3-1.17 6-1.17 9 0" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+          <span class="app-name">Spotify</span>
+        </button>
+        <button class="app-btn" data-app="3201907018807" style="--app-color:#ef5350" aria-label="Abrir Pluto TV">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="var(--app-color)"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="9" font-weight="bold">PLUTO</text></svg>
+          <span class="app-name">Pluto TV</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ─── Registro ─────────────────────────────────────────── -->
+    <section class="card log-card">
+      <div class="log-header">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Registro
+        </h2>
+        <button class="btn-ghost" id="clearLog" aria-label="Limpiar registro">Limpiar</button>
+      </div>
+      <div class="command-log" id="commandLog" role="log" aria-live="polite">
+        <p class="log-empty">Los comandos enviados aparecerán aquí</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ─── Toast ────────────────────────────────────────────── -->
+  <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
