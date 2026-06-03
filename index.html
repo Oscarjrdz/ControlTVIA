@@ -29,9 +29,19 @@
       </div>
     </div>
     <div class="header-actions">
+      <!-- Badge AI (visible cuando Gemini está activo) -->
+      <span class="ai-badge hidden" id="aiBadge">✨ AI</span>
+
       <button class="icon-btn" id="scanBtn" title="Buscar TVs en la red" aria-label="Buscar TVs">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </button>
+      <!-- Botón configuración -->
+      <button class="icon-btn" id="settingsBtn" title="Configuración / Gemini AI" aria-label="Configuración">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
       <button class="icon-btn" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema">
@@ -329,6 +339,62 @@
 
   <!-- ─── Toast ────────────────────────────────────────────── -->
   <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+  <!-- ─── Settings Modal ──────────────────────────────────── -->
+  <div class="settings-overlay hidden" id="settingsOverlay"></div>
+  <div class="settings-modal hidden" id="settingsModal" role="dialog" aria-label="Configuración">
+    <div class="settings-handle"></div>
+    <div class="settings-header">
+      <h2 class="settings-title">Configuración</h2>
+      <button class="icon-btn" id="settingsClose" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Gemini API -->
+    <div class="settings-section">
+      <div class="settings-section-header">
+        <span class="settings-section-icon">✨</span>
+        <div>
+          <strong class="settings-section-title">Gemini AI</strong>
+          <p class="settings-section-desc">Activa conversación natural en lugar de comandos fijos</p>
+        </div>
+      </div>
+      <label class="settings-label" for="geminiKeyInput">API Key de Google AI Studio</label>
+      <div class="key-input-row">
+        <input
+          type="password"
+          id="geminiKeyInput"
+          class="settings-input"
+          placeholder="AIzaSy…"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button class="key-show-btn" id="keyShowBtn" type="button" aria-label="Mostrar/ocultar key">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <p class="settings-hint">La key se guarda solo en este dispositivo (localStorage). Obtenla gratis en <em>aistudio.google.com</em></p>
+    </div>
+
+    <!-- Conversación -->
+    <div class="settings-section">
+      <div class="settings-section-header">
+        <span class="settings-section-icon">💬</span>
+        <div>
+          <strong class="settings-section-title">Conversación</strong>
+          <p class="settings-section-desc">Gemini recuerda el contexto de los últimos mensajes</p>
+        </div>
+      </div>
+      <button class="btn-ghost" id="clearConversation">Borrar historial de conversación</button>
+    </div>
+
+    <button class="btn-save" id="saveSettings">Guardar</button>
+  </div>
 
   <script src="app.js"></script>
 </body>

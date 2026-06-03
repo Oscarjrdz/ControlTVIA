@@ -12,6 +12,47 @@ const WS_PORT_WSS  = 8002;   // wss:// — funciona desde HTTPS (cert autofirmad
 const WS_PATH      = '/api/v2/channels/samsung.remote.control';
 const IS_HTTPS     = location.protocol === 'https:';
 
+// ── Gemini ──────────────────────────────────────────────────
+const GEMINI_MODEL    = 'gemini-2.0-flash';
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_HISTORY_MAX = 10; // turnos en memoria (5 intercambios)
+
+const SYSTEM_PROMPT = `Eres "Control", asistente de voz integrado en una app para Samsung Smart TV.
+Personalidad: amigable, casual, español México. Respuestas cortas y naturales.
+
+REGLA CRÍTICA: responde SOLO con JSON puro sin comillas de código ni explicaciones.
+Formato exacto: {"action":"...","value":"...","speak":"...","repeat":1}
+
+Campos:
+- action: "key" | "app" | "chat"
+- value: nombre de tecla, appId, o null si es chat
+- speak: lo que dices en voz al usuario (máximo 12 palabras, casual MX)
+- repeat: cuántas veces repetir la acción (default 1, máximo 20)
+
+TECLAS DISPONIBLES (action "key"):
+KEY_VOLUP / KEY_VOLDOWN = volumen, KEY_MUTE = silencio/quitar mute
+KEY_CHUP / KEY_CHDOWN = canales, KEY_POWER = encender/apagar
+KEY_HOME = inicio, KEY_RETURN = atrás, KEY_ENTER = ok/seleccionar
+KEY_UP / KEY_DOWN / KEY_LEFT / KEY_RIGHT = navegar
+KEY_PLAY / KEY_PAUSE / KEY_REWIND / KEY_FF = reproducción
+KEY_1 KEY_2 KEY_3 KEY_4 KEY_5 KEY_6 KEY_7 KEY_8 KEY_9 KEY_0 = números
+
+APPS DISPONIBLES (action "app"):
+"netflix" = Netflix
+"111299001912" = YouTube
+"3201512006785" = Amazon Prime Video
+"3201601007250" = Disney+
+"3202012024782" = Spotify
+"3201907018807" = Pluto TV
+
+EJEMPLOS:
+Usuario: "bájale" → {"action":"key","value":"KEY_VOLDOWN","speak":"Le bajo","repeat":1}
+Usuario: "más" (después de subir) → {"action":"key","value":"KEY_VOLUP","speak":"Más","repeat":2}
+Usuario: "ponme netflix" → {"action":"app","value":"netflix","speak":"Va, Netflix","repeat":1}
+Usuario: "sube 5 veces" → {"action":"key","value":"KEY_VOLUP","speak":"Subiendo 5","repeat":5}
+Usuario: "qué onda" → {"action":"chat","value":null,"speak":"Aquí ando, ¿qué quieres ver?","repeat":1}
+Usuario: "apágala ya" → {"action":"key","value":"KEY_POWER","speak":"Apagando, buenas noches","repeat":1}`;
+
 // Wake word phrases (todas las variaciones que puede reconocer el speech API)
 const WAKE_WORDS = [
   'oye control', 'hey control', 'ey control', 'oye controla',
@@ -97,10 +138,15 @@ class TVController {
     this.scanActive    = false;
 
     // Wake word state
-    this.wakeMode      = false;   // manos libres activado
-    this.wakeArmed     = false;   // wake word oído, esperando comando
-    this._wakeRec      = null;    // instancia SR para wake word
-    this._wakeRestart  = null;    // timer de reinicio
+    this.wakeMode      = false;
+    this.wakeArmed     = false;
+    this._wakeRec      = null;
+    this._wakeRestart  = null;
+
+    // Gemini / AI state
+    this.geminiKey     = localStorage.getItem('geminiKey') || '';
+    this._conversation = [];   // historial [{role,parts}]
+    this._ttsVoice     = null; // voz TTS preferida
 
     this._init();
   }
@@ -109,8 +155,9 @@ class TVController {
     this._bindUI();
     this._applyTheme(localStorage.getItem('theme') || 'dark');
     this._setupSpeech();
+    this._pickTTSVoice();
+    this._syncAIBadge();
 
-    // PWA service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
@@ -150,6 +197,21 @@ class TVController {
     // App launchers
     $$('[data-app]').forEach(btn =>
       btn.addEventListener('click', () => this.openApp(btn.dataset.app)));
+
+    // Settings modal
+    $('settingsBtn').addEventListener('click', () => this._openSettings());
+    $('settingsClose').addEventListener('click', () => this._closeSettings());
+    $('settingsOverlay').addEventListener('click', () => this._closeSettings());
+    $('saveSettings').addEventListener('click', () => this._saveSettings());
+    $('clearConversation').addEventListener('click', () => {
+      this._conversation = [];
+      this._log('Conversación reiniciada', 'info');
+      this._closeSettings();
+    });
+    $('keyShowBtn').addEventListener('click', () => {
+      const inp = $('geminiKeyInput');
+      if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
 
     // Theme toggle
     $('themeToggle').addEventListener('click', () => {
@@ -465,6 +527,12 @@ class TVController {
   _processVoice(transcript) {
     this._log('🎤 "' + transcript + '"', 'voice');
 
+    if (this.geminiKey) {
+      this._askGemini(transcript);
+      return;
+    }
+
+    // Fallback: pattern matching clásico
     for (const cmd of VOICE_COMMANDS) {
       for (const pattern of cmd.patterns) {
         if (transcript.includes(pattern)) {
@@ -484,6 +552,166 @@ class TVController {
     this._log('No reconocí: "' + transcript + '"', 'warning');
     document.getElementById('voiceStatus').textContent = '¿No entendí? Intenta de nuevo';
     this._toast('No entendí el comando');
+  }
+
+  // ────── Gemini AI ────────────────────────────────────────
+
+  async _askGemini(transcript) {
+    const statusEl    = document.getElementById('voiceStatus');
+    const transcriptEl = document.getElementById('voiceTranscript');
+    if (statusEl) statusEl.textContent = '✨ Pensando…';
+
+    // Agregar turno del usuario al historial
+    this._conversation.push({ role: 'user', parts: [{ text: transcript }] });
+    if (this._conversation.length > GEMINI_HISTORY_MAX) {
+      this._conversation.splice(0, 2); // eliminar el par más antiguo
+    }
+
+    const body = {
+      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: this._conversation,
+      generationConfig: {
+        temperature: 0.8,
+        maxOutputTokens: 200,
+        responseMimeType: 'application/json',
+      },
+    };
+
+    try {
+      const res = await fetch(`${GEMINI_ENDPOINT}?key=${this.geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (!rawText) throw new Error('Respuesta vacía de Gemini');
+
+      // Guardar respuesta del modelo en historial
+      this._conversation.push({ role: 'model', parts: [{ text: rawText }] });
+
+      let result;
+      try { result = JSON.parse(rawText); } catch (_) {
+        throw new Error('JSON inválido: ' + rawText.slice(0, 80));
+      }
+
+      this._executeAIAction(result, transcript);
+
+    } catch (e) {
+      this._log('Gemini error: ' + e.message, 'error');
+      if (statusEl) statusEl.textContent = 'Error AI — intenta de nuevo';
+      // Quitar el turno del usuario si falló para no contaminar el historial
+      this._conversation.pop();
+    }
+  }
+
+  _executeAIAction(result, originalTranscript) {
+    const { action, value, speak, repeat = 1 } = result;
+    const statusEl = document.getElementById('voiceStatus');
+    const transcriptEl = document.getElementById('voiceTranscript');
+
+    // Mostrar lo que respondió la IA
+    if (speak) {
+      if (transcriptEl) transcriptEl.textContent = '✨ ' + speak;
+      setTimeout(() => { if (transcriptEl) transcriptEl.textContent = ''; }, 4000);
+    }
+    if (statusEl) statusEl.textContent = action === 'chat' ? '💬 ' + (speak || '') : '✓ Ejecutado';
+
+    // Hablar en voz
+    if (speak) this._speak(speak);
+
+    // Ejecutar acción en la TV
+    const times = Math.min(Math.max(parseInt(repeat) || 1, 1), 20);
+    if (action === 'key' && value) {
+      this._log(`✨ AI → ${value} × ${times}`, 'command');
+      for (let i = 0; i < times; i++) {
+        setTimeout(() => this.sendKey(value), i * 280);
+      }
+    } else if (action === 'app' && value) {
+      this._log(`✨ AI → app: ${APP_LABELS[value] || value}`, 'command');
+      this.openApp(value);
+    } else if (action === 'chat') {
+      this._log(`✨ AI → "${speak}"`, 'voice');
+    }
+  }
+
+  // ────── Text-to-Speech ───────────────────────────────────
+
+  _pickTTSVoice() {
+    const pick = () => {
+      const voices = speechSynthesis.getVoices();
+      const priority = [
+        v => v.lang === 'es-MX' && v.localService,
+        v => v.lang === 'es-MX',
+        v => v.lang.startsWith('es') && v.localService,
+        v => v.lang.startsWith('es'),
+      ];
+      for (const test of priority) {
+        const found = voices.find(test);
+        if (found) { this._ttsVoice = found; return; }
+      }
+    };
+    pick();
+    speechSynthesis.addEventListener('voiceschanged', pick, { once: true });
+  }
+
+  _speak(text) {
+    if (!window.speechSynthesis || !text) return;
+    speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang  = 'es-MX';
+    utt.rate  = 1.05;
+    utt.pitch = 1.0;
+    if (this._ttsVoice) utt.voice = this._ttsVoice;
+    speechSynthesis.speak(utt);
+  }
+
+  // ────── Settings modal ───────────────────────────────────
+
+  _openSettings() {
+    const modal = document.getElementById('settingsModal');
+    const input = document.getElementById('geminiKeyInput');
+    if (input) input.value = this.geminiKey;
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('open');
+    }
+  }
+
+  _closeSettings() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) {
+      modal.classList.remove('open');
+      setTimeout(() => modal.classList.add('hidden'), 280);
+    }
+  }
+
+  _saveSettings() {
+    const input = document.getElementById('geminiKeyInput');
+    const key = input ? input.value.trim() : '';
+    this.geminiKey = key;
+    localStorage.setItem('geminiKey', key);
+    this._conversation = []; // limpiar historial al cambiar key
+    this._syncAIBadge();
+    this._closeSettings();
+    if (key) {
+      this._log('✨ Gemini activado — modo conversación', 'success');
+      this._toast('¡Gemini listo! Habla con normalidad');
+    } else {
+      this._log('Gemini desactivado — modo comandos clásicos', 'info');
+    }
+  }
+
+  _syncAIBadge() {
+    const badge = document.getElementById('aiBadge');
+    if (!badge) return;
+    badge.classList.toggle('hidden', !this.geminiKey);
   }
 
   // ────── Wake word mode ───────────────────────────────────
