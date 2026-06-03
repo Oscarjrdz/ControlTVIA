@@ -1,11 +1,8 @@
-import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  useAudioRecorder,
-} from 'expo-audio';
-import * as FileSystem from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import { useCallback, useState } from 'react';
+
+// expo-audio y expo-av requieren un custom dev build (no están en Expo Go).
+// En esta versión: TTS funciona, grabación de audio se agrega en el build nativo.
 
 interface UseVoiceReturn {
   isRecording:     boolean;
@@ -15,40 +12,16 @@ interface UseVoiceReturn {
   stopSpeaking:    () => void;
   isSpeaking:      boolean;
   permissionError: string | null;
+  audioAvailable:  boolean;
 }
 
 export function useVoice(): UseVoiceReturn {
-  const [isSpeaking,     setIsSpeaking]   = useState(false);
-  const [permissionError, setPermError]   = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-
-  const startRecording = useCallback(async () => {
-    const { granted } = await requestRecordingPermissionsAsync();
-    if (!granted) {
-      setPermError('Permiso de micrófono denegado — ve a Ajustes');
-      return;
-    }
-    setPermError(null);
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-  }, [recorder]);
-
-  const stopRecording = useCallback(async (): Promise<{ base64: string; mimeType: string } | null> => {
-    await recorder.stop();
-    const uri = recorder.uri;
-    if (!uri) return null;
-
-    try {
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      await FileSystem.deleteAsync(uri, { idempotent: true });
-      return { base64, mimeType: 'audio/aac' };
-    } catch {
-      return null;
-    }
-  }, [recorder]);
+  // Audio recording no disponible en Expo Go.
+  // Se habilitará automáticamente en el dev build / producción.
+  const startRecording = useCallback(async () => {}, []);
+  const stopRecording  = useCallback(async () => null, []);
 
   const speak = useCallback((text: string) => {
     Speech.stop();
@@ -68,12 +41,13 @@ export function useVoice(): UseVoiceReturn {
   }, []);
 
   return {
-    isRecording:    recorder.isRecording,
+    isRecording:    false,
     startRecording,
     stopRecording,
     speak,
     stopSpeaking,
     isSpeaking,
-    permissionError,
+    permissionError: null,
+    audioAvailable:  false,
   };
 }
